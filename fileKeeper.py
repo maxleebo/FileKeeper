@@ -14,8 +14,18 @@ import string
 import commands
 
 
+def removespace(workdir):
+    allpath = workdir + '/*'
+    allfiles = glob.glob(allpath)
+    for onefile in allfiles:
+        # print onefile
+        if " " in onefile:
+            nospaceOneFile = onefile.replace(" ", "_")
+            os.rename(onefile, nospaceOneFile)
+
+
 def categorizedir(nowpath, androiddir, uncatdir):   # TODO: implement the categorization using a map consists of Keyword and Dir pairs
-    grepCmd = "grep -ir 'apk' " + nowpath
+    grepCmd = "find " + nowpath + " -iname " + "*apk*"
     grepInfo = commands.getstatusoutput(grepCmd)
     # print grepInfo[1]
     if "apk" in grepInfo[1]:
@@ -25,6 +35,7 @@ def categorizedir(nowpath, androiddir, uncatdir):   # TODO: implement the catego
     else:
         os.system("mv -f " + nowpath + ' ' + uncatdir)
 
+
 def printerror():
     print 'Usage: python fileKeeper.py -OPTION $DIR'
     print 'OPTION:'
@@ -32,11 +43,11 @@ def printerror():
     print 'e.g. sudo python fileKeeper.py -u /home/max/tmp/testFileKeeper/'
 
 
-def uncompressdir(dir, androiddir, uncatdir):
+def uncompressdir(dir, androiddir, uncatdir, undecompdir):
     tarpath = dir + '/*.tar*'
     tarfiles = glob.glob(tarpath)
     for onetar in tarfiles:
-        periodindex = string.index(onetar, ".")
+        periodindex = string.index(onetar, ".tar")
         lastslashindex = string.rindex(onetar, "/")
         tarname = onetar[lastslashindex+1 : periodindex]
         nowtarpath = dir + '/' + tarname
@@ -50,7 +61,7 @@ def uncompressdir(dir, androiddir, uncatdir):
     zippath = dir + '/*.zip'
     zipfiles = glob.glob(zippath)
     for onezip in zipfiles:
-        periodindex = string.index(onezip, ".")
+        periodindex = string.index(onezip, ".zip")
         lastslashindex = string.rindex(onezip, "/")
         zipname = onezip[lastslashindex+1 : periodindex]
         nowzippath = dir + '/' + zipname
@@ -63,13 +74,28 @@ def uncompressdir(dir, androiddir, uncatdir):
             is_encpted = zinfo.flag_bits & 0x1
             if is_encpted:
                 break
-        passwd = 'infected666' + zipname[len(zipname) - 1]  # This is default password used, need change for other uses
         if is_encpted:
+            passwd = 'infected666' + zipname[len(zipname) - 1]  # This is default password used, need change for other uses
             for item in zip.namelist():
-                zip.extract(item, nowzippath,passwd)    # Sometimes password is needed
+                try:
+                    zip.extract(item, nowzippath, passwd)    # Sometimes password is needed
+                except RuntimeError as e:
+                    if 'password' in e[0]:
+                        passwd = 'infected'
+                        try:
+                            zip.extract(item, nowzippath, passwd)
+                        except RuntimeError as e:
+                            print 'nowzip',
+                            print onezip
+                            print 'RuntimeError in second trail e: ',
+                            print e[0]
+                            os.system("mv " + onezip + " " + undecompdir)
+                            os.system("rm -rf " + nowzippath)
+                            break
         else:
             for item in zip.namelist():
                 zip.extract(item, nowzippath)
+
         categorizedir(nowzippath, androiddir, uncatdir)
 
 
@@ -85,12 +111,16 @@ else:
     option = sys.argv[1]
     if option == '-u':
         workDir = sys.argv[2]
+        removespace(workDir)
         androidDir = workDir + '/' + 'Android'
         if not os.path.exists(androidDir):
             os.makedirs(androidDir)
         uncatDir = workDir + '/' + 'Uncategorized'
         if not os.path.exists(uncatDir):
             os.makedirs(uncatDir)
-        uncompressdir(workDir, androidDir, uncatDir)
+        undecompDir = workDir + '/' + 'Undecomped'
+        if not os.path.exists(undecompDir):
+            os.makedirs(undecompDir)
+        uncompressdir(workDir, androidDir, uncatDir, undecompDir)
     else:
         printerror()
