@@ -37,10 +37,21 @@ def categorizedir(nowpath, androiddir, uncatdir):   # TODO: implement the catego
 
 
 def printerror():
-    print 'Usage: python fileKeeper.py -OPTION $DIR'
+    print 'Usage: python fileKeeper.py -OPTION $DIR [$OUTDIR]'
     print 'OPTION:'
     print '-u: uncompress all tars and zips in $DIR'
     print 'e.g. sudo python fileKeeper.py -u /home/max/tmp/testFileKeeper/'
+    print '-m: move finished files($OUTDIR w.r.t $DIR) to ../done directory'
+    print 'e.g. sudo python fileKeeper.py -m C:\Users\Max\TIFS\logs\googleplay\\fiveCatAppsDir\social\merged\\   ' \
+          'C:\Users\Max\TIFS\logs\googleplay\\fiveCatAppsDir\social\mapped\\ '
+
+
+def invalidinput():
+    try:
+        raise Exception()
+    except:
+        printerror()
+        sys.exit(ERROR_CODE_INPUT_FORMAT)
 
 
 def uncompressdir(dir, androiddir, uncatdir, undecompdir):
@@ -101,26 +112,41 @@ def uncompressdir(dir, androiddir, uncatdir, undecompdir):
 
 # Below is starting of main
 
-if len(sys.argv) != 3:
-    try:
-        raise Exception()
-    except:
-        printerror()
-        sys.exit(ERROR_CODE_INPUT_FORMAT)
+if len(sys.argv) != 3 and len(sys.argv) != 4:
+    invalidinput()
 else:
     option = sys.argv[1]
     if option == '-u':
-        workDir = sys.argv[2]
-        removespace(workDir)
-        androidDir = workDir + '/' + 'Android'
-        if not os.path.exists(androidDir):
-            os.makedirs(androidDir)
-        uncatDir = workDir + '/' + 'Uncategorized'
-        if not os.path.exists(uncatDir):
-            os.makedirs(uncatDir)
-        undecompDir = workDir + '/' + 'Undecomped'
-        if not os.path.exists(undecompDir):
-            os.makedirs(undecompDir)
-        uncompressdir(workDir, androidDir, uncatDir, undecompDir)
-    else:
-        printerror()
+        if len(sys.argv) != 3:
+            invalidinput()
+        else:
+            workDir = sys.argv[2]
+            removespace(workDir)
+            androidDir = workDir + '/' + 'Android'
+            if not os.path.exists(androidDir):
+                os.makedirs(androidDir)
+            uncatDir = workDir + '/' + 'Uncategorized'
+            if not os.path.exists(uncatDir):
+                os.makedirs(uncatDir)
+            undecompDir = workDir + '/' + 'Undecomped'
+            if not os.path.exists(undecompDir):
+                os.makedirs(undecompDir)
+            uncompressdir(workDir, androidDir, uncatDir, undecompDir)
+    elif option == '-m':
+        if len(sys.argv) != 4:
+            invalidinput()
+        else:
+            inputDir = sys.argv[2]
+            outputDir = sys.argv[3]
+            print inputDir
+            print outputDir
+            doneDir = inputDir[: string.rindex(inputDir, 'merged')] + 'done'
+            if not os.path.exists(doneDir):
+                os.makedirs(doneDir)
+            processedFiles = glob.glob(outputDir + '\\' + '*.txt')
+            for oneFile in processedFiles:
+                print oneFile
+                fileName = oneFile[string.rindex(oneFile, '\\') + 1:string.rindex(oneFile, '.txt')]
+                procInputFile = inputDir + '\\' + fileName
+                doneFile = doneDir + '\\' + fileName
+                os.rename(procInputFile, doneFile)
